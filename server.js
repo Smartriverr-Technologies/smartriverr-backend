@@ -103,11 +103,14 @@ app.get('/api/posts', async (req, res) => {
 
     const posts = [];
     snapshot.forEach(doc => {
-      posts.push({
-        id: doc.id,
-        ...doc.data()
-      });
-    });
+  const postData = doc.data();
+  posts.push({
+    id: doc.id,
+    ...postData,
+    // This converts the Firestore Timestamp to a standard JavaScript Date object
+    publishDate: postData.publishDate.toDate() 
+  });
+});
 
     res.status(200).json(posts);
   } catch (error) {
@@ -155,6 +158,56 @@ app.post('/api/posts', async (req, res) => {
   }
 });
 
+/*
+--------------------------------------------------------------------------------
+-- UPDATE A BLOG POST --
+URL: PUT /api/posts/:id
+Description: Updates a document by its ID in the 'posts' collection.
+Body: A JSON object with `title` and `content`.
+Response: The updated blog post object.
+--------------------------------------------------------------------------------
+*/
+app.put('/api/posts/:id', async (req, res) => {
+  try {
+    const postId = req.params.id;
+    const { title, content } = req.body;
+
+    if (!title || !content) {
+      return res.status(400).send("Title and content are required.");
+    }
+    
+    const postRef = db.collection('posts').doc(postId);
+    await postRef.update({ title, content });
+
+    const updatedDoc = await postRef.get();
+    res.status(200).json({
+      id: updatedDoc.id,
+      ...updatedDoc.data()
+    });
+    
+  } catch (error) {
+    console.error("Error updating post:", error);
+    res.status(500).send("Error updating post.");
+  }
+});
+/*
+--------------------------------------------------------------------------------
+-- DELETE A BLOG POST --
+URL: DELETE /api/posts/:id
+Description: Deletes a document by its ID from the 'posts' collection.
+Response: A success message.
+--------------------------------------------------------------------------------
+*/
+app.delete('/api/posts/:id', async (req, res) => {
+  try {
+    const postId = req.params.id;
+    await db.collection('posts').doc(postId).delete();
+    res.status(200).send({ message: 'Post deleted successfully' });
+  } catch (error) {
+    console.error("Error deleting post:", error);
+    res.status(500).send("Error deleting post.");
+  }
+});
 /*
 --------------------------------------------------------------------------------
 -- ADMIN LOGIN (SIMPLE) --
